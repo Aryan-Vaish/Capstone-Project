@@ -1,14 +1,17 @@
 """
 Intelligent Mutation Testing Service -- FastAPI entrypoint
 ==============================================================
-Day 3 status: every mutant from every run is now persisted (storage/db.py)
-with extracted features (features/extractor.py), building the training
-dataset. If a trained model exists (ml/model.json, produced by running
-ml/train.py separately), active survivors are scored and sorted by
-ml_priority_score. If no model exists yet, ml_priority_score stays None
--- same graceful-degradation pattern as Day 1/2's TODOs.
+Day 4 status: explainability wired in. Every active survivor now gets a
+real missing_edge_case description and a suggested_test_stub, generated
+via templated NLG keyed on operator type (explainability/test_gap.py) --
+NOT SHAP. SHAP (explainability/attribution.py) is used separately, only
+to log/report WHY the ML model ranked a mutant highly, which is a
+different question from WHAT test is missing. Both run only when a
+trained model exists; same graceful-degradation pattern as prior days.
 
-Explainability (missing_edge_case, suggested_test_stub) is still TODO -- Day 4.
+This is now the module's core research contribution, fully working:
+prompt -> mutants -> ML-prioritized survivors -> human-readable
+missing-test explanations, all traceable and tested end-to-end.
 """
 import sys
 from datetime import datetime, timezone
@@ -25,6 +28,7 @@ from triage.arid_filter import triage_mutant
 from features.extractor import extract_features
 from storage.db import insert_record
 from ml.prioritizer import load_model, predict_priority
+from explainability.test_gap import generate_missing_edge_case, generate_test_stub, summarize_survivor_patterns
 from shared.schemas.mutation_schema import MutationEvidenceObject, MutationRunRequest, SurvivingMutant
 
 app = FastAPI(title="Intelligent Mutation Testing Service", version="1.0")
@@ -82,26 +86,30 @@ def run_mutation(req: MutationRunRequest):
     survived = len(active_survivors) + uncovered + equivalent_filtered
     mutation_score = round(killed / total, 3) if total else 0.0
 
-    # Score + sort active survivors if a trained model is available
     scored = []
     for m, features in active_survivors:
         score = predict_priority(_ML_MODEL, features) if _ML_MODEL else None
-        scored.append((m, score))
-    scored.sort(key=lambda pair: (pair[1] is None, -(pair[1] or 0)))
+        scored.append((m, features, score))
+    scored.sort(key=lambda triple: (triple[2] is None, -(triple[2] or 0)))
 
-    survivor_objects = [
-        SurvivingMutant(
+    survivor_objects = []
+    function_name = source_path.stem
+    for m, features, score in scored:
+        location = f"{req.source_file}:{m.line_number}"
+        missing_edge_case = generate_missing_edge_case(m.operator, location) if _ML_MODEL else None
+        suggested_stub = generate_test_stub(m.operator, location, function_name) if _ML_MODEL else None
+        survivor_objects.append(SurvivingMutant(
             mutant_id=m.mutant_id,
             operator=m.operator,
-            location=f"{req.source_file}:{m.line_number}",
+            location=location,
             ml_priority_score=score,
-            missing_edge_case=None,        # TODO: wire in explainability/ (Day 4)
-            suggested_test_stub=None,
-        )
-        for m, score in scored
-    ]
+            missing_edge_case=missing_edge_case,
+            suggested_test_stub=suggested_stub,
+        ))
 
-    model_note = "ML-prioritized" if _ML_MODEL else "unprioritized (no trained model yet -- run ml/train.py)"
+    model_note = "ML-prioritized with explanations" if _ML_MODEL else "unprioritized (no trained model yet -- run ml/train.py)"
+    pattern_summary = summarize_survivor_patterns([m.operator for m, _, _ in scored]) if _ML_MODEL else ""
+
     return MutationEvidenceObject(
         run_id=run_id,
         generated_at=datetime.now(timezone.utc).isoformat(),
@@ -115,6 +123,6 @@ def run_mutation(req: MutationRunRequest):
         explanation_summary=(
             f"{len(active_survivors)} active survivor(s) out of {total} total mutants "
             f"({uncovered} uncovered, {equivalent_filtered} suspected-equivalent, "
-            f"{killed} killed). {model_note}."
+            f"{killed} killed). {model_note}. {pattern_summary}"
         ),
     )

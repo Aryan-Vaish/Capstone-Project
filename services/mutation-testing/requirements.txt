@@ -5,3 +5,4 @@ mutmut==3.7.0
 coverage==7.6.1
 xgboost
 scikit-learn
+shap

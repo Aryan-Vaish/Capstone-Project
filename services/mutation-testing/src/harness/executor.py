@@ -21,7 +21,7 @@ from typing import List, Set, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mutators.generator import Mutant, generate_and_run
-from coverage.tracker import get_covered_lines
+from mutation_coverage.tracker import get_covered_lines
 
 
 def run_mutation_analysis(source_path: Path, tests_dir_path: Path, timeout: int = 300) -> Tuple[List[Mutant], Set[int]]:
