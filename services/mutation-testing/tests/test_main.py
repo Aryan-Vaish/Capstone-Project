@@ -47,3 +47,16 @@ def test_coverage_and_triage_bucketing():
     # on this toy module, we know 3 mutants are string-literal-only
     # message changes -- they should be filtered, not reported as real gaps
     assert body["equivalent_mutants_filtered"] >= 1
+
+
+def test_ml_priority_score_field_present():
+    """Day 3: confirms the field exists and is a valid type, whether or not
+    a model has been trained yet (None is valid pre-training, float after)."""
+    resp = client.post("/mutation/run", json={
+        "source_file": "corpus/example/module.py",
+        "tests_dir": "corpus/example",
+    })
+    body = resp.json()
+    for survivor in body["prioritized_surviving_mutants"]:
+        assert "ml_priority_score" in survivor
+        assert survivor["ml_priority_score"] is None or isinstance(survivor["ml_priority_score"], float)
