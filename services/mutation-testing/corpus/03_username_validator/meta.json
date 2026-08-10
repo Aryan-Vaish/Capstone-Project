@@ -1,0 +1,45 @@
+{
+  "id": "03",
+  "slug": "username_validator",
+  "module_key": "corpus/03_username_validator/username_validator.py",
+  "domain": "validation",
+  "loc": 18,
+  "control_flow_features": [
+    "for_loop",
+    "negated_or",
+    "early_return"
+  ],
+  "target_operator_families": [
+    "comparison",
+    "logical",
+    "constant"
+  ],
+  "intended_suite_tier": "weak",
+  "omitted_test_cases": [
+    "username of exactly 3 and exactly 20 characters",
+    "usernames containing punctuation or spaces",
+    "underscore-only username",
+    "empty string",
+    "uppercase vowels in count_vowels",
+    "count_vowels with zero vowels, and multi-vowel accumulation"
+  ],
+  "provenance": {
+    "generator": "human",
+    "author": "project team (Days 1-3)",
+    "note": "Hand-written before the Day 5 corpus work. Retained unmodified as a non-AI anchor: the benchmark must not consist solely of code produced by the same model family the tooling is evaluated with."
+  },
+  "files": {
+    "source": {
+      "path": "username_validator.py",
+      "sha256": "a702413f11e9c8b021fb049ae005a8f8059363a28110e55603a40a51834ecdc1"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_username_validator.py",
+      "sha256": "1c762584641646b15103ec8a070a137850f8d6b7b812075013141e6ac5732839"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_username_validator.py",
+      "sha256": "61eb80306a1dd2f18266a12e52b164d2a2ccd5ac98695e8f77a678da020efed3"
+    }
+  }
+}

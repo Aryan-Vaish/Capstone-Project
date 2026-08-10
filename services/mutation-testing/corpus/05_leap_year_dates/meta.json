@@ -1,0 +1,48 @@
+{
+  "id": "05",
+  "slug": "leap_year_dates",
+  "module_key": "corpus/05_leap_year_dates/leap_year_dates.py",
+  "domain": "calendar",
+  "loc": 26,
+  "control_flow_features": [
+    "boolean_chain",
+    "for_loop",
+    "list_index",
+    "ternary"
+  ],
+  "target_operator_families": [
+    "arithmetic",
+    "logical",
+    "comparison",
+    "constant"
+  ],
+  "intended_suite_tier": "medium",
+  "omitted_test_cases": [
+    "century years (1900 not leap, 2000 leap) -- the 100/400 rules",
+    "month upper bound (12 valid, 13 invalid)",
+    "days_in_year for a leap year",
+    "day_of_year accumulating across multiple months",
+    "every month other than January and February"
+  ],
+  "provenance": {
+    "generator": "claude-opus-5",
+    "author": "Claude Code, interactive session",
+    "generated_at": "2026-08-11",
+    "human_edited": false,
+    "note": "Authored in-session against the written spec in this file. See corpus/GENERATION.md for the reproducibility statement."
+  },
+  "files": {
+    "source": {
+      "path": "leap_year_dates.py",
+      "sha256": "edf4dcac6cdab1313f6430cdb302e469dc3ff1d4773f3d445df9c53fd8eb59ef"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_leap_year_dates.py",
+      "sha256": "325b1563955a119d9f6143d02afbfa226c3edcbd047c0818c90c27a8295a7e26"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_leap_year_dates.py",
+      "sha256": "94fe514653c96336b96afaf6cf9e726e057ac97d1765c5ceb1eb537605733958"
+    }
+  }
+}

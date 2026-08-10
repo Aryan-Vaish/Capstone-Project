@@ -1,0 +1,45 @@
+{
+  "id": "07",
+  "slug": "permission_flags",
+  "module_key": "corpus/07_permission_flags/permission_flags.py",
+  "domain": "access-control",
+  "loc": 44,
+  "control_flow_features": [
+    "for_loop",
+    "tuple_iteration",
+    "bitmask"
+  ],
+  "target_operator_families": [
+    "arithmetic",
+    "comparison",
+    "constant"
+  ],
+  "intended_suite_tier": "medium",
+  "omitted_test_cases": [
+    "revoke and toggle entirely",
+    "any mask where AND and OR would disagree",
+    "the 1 << n shift constants",
+    "describe on a combined or empty mask"
+  ],
+  "provenance": {
+    "generator": "claude-opus-5",
+    "author": "Claude Code, interactive session",
+    "generated_at": "2026-08-11",
+    "human_edited": false,
+    "note": "Authored in-session against the written spec in this file. See corpus/GENERATION.md for the reproducibility statement."
+  },
+  "files": {
+    "source": {
+      "path": "permission_flags.py",
+      "sha256": "87a7dec81bfdffc06442ca66e21fb0c25799f5a2d44c6c60eaf1d0487d0c24f9"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_permission_flags.py",
+      "sha256": "1af2b2d5a572efc425247e85f9607177125df4060425d29cfb915677d09ff70f"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_permission_flags.py",
+      "sha256": "d7a27075c06f34b58f4d0d096281f8b611f42be8cfb291dbead639437604d1fe"
+    }
+  }
+}

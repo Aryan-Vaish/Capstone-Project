@@ -1,0 +1,45 @@
+{
+  "id": "02",
+  "slug": "discount_pricing",
+  "module_key": "corpus/02_discount_pricing/discount_pricing.py",
+  "domain": "e-commerce",
+  "loc": 11,
+  "control_flow_features": [
+    "nested_if",
+    "or_chain",
+    "default_argument"
+  ],
+  "target_operator_families": [
+    "comparison",
+    "logical",
+    "arithmetic",
+    "constant"
+  ],
+  "intended_suite_tier": "medium",
+  "omitted_test_cases": [
+    "discount_percent exactly 0 and exactly 100",
+    "price exactly 0",
+    "negative price rejection",
+    "the threshold=50.0 default value",
+    "rounding to exactly two decimal places"
+  ],
+  "provenance": {
+    "generator": "human",
+    "author": "project team (Days 1-3)",
+    "note": "Hand-written before the Day 5 corpus work. Retained unmodified as a non-AI anchor: the benchmark must not consist solely of code produced by the same model family the tooling is evaluated with."
+  },
+  "files": {
+    "source": {
+      "path": "discount_pricing.py",
+      "sha256": "5fb242c2c50e08ab753883332391594fcc7c25b7f4491abb4d414f0993e8b325"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_discount_pricing.py",
+      "sha256": "1506d2a80e268e22f3b98dfc43d0aad62d32a4cb65bae55b92d3e9a95cd2247f"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_discount_pricing.py",
+      "sha256": "303647022b229118278dd4533ee224670e2f26ae55b4a3f92010cfac4bab4146"
+    }
+  }
+}

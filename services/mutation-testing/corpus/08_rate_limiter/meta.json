@@ -1,0 +1,52 @@
+{
+  "id": "08",
+  "slug": "rate_limiter",
+  "module_key": "corpus/08_rate_limiter/rate_limiter.py",
+  "domain": "infrastructure",
+  "loc": 68,
+  "control_flow_features": [
+    "class",
+    "property",
+    "staticmethod",
+    "guard_clause",
+    "default_argument",
+    "dunder_repr"
+  ],
+  "target_operator_families": [
+    "comparison",
+    "arithmetic",
+    "constant",
+    "call"
+  ],
+  "intended_suite_tier": "untested_function",
+  "omitted_test_cases": [
+    "refill entirely (uncovered)",
+    "_clamp entirely (uncovered)",
+    "is_exhausted entirely (uncovered)",
+    "rejection_count",
+    "cost validation and non-default cost values",
+    "capacity validation"
+  ],
+  "provenance": {
+    "generator": "claude-opus-5",
+    "author": "Claude Code, interactive session",
+    "generated_at": "2026-08-11",
+    "human_edited": false,
+    "note": "Authored in-session against the written spec in this file. See corpus/GENERATION.md for the reproducibility statement."
+  },
+  "files": {
+    "source": {
+      "path": "rate_limiter.py",
+      "sha256": "f3789be6c7437bc19255e2ff55879a0ab8c2dad08ce9b5c629654fa7a7e00aa1"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_rate_limiter.py",
+      "sha256": "7435c6ac4182bf82aa11fd17262ac24bcea496d2981b84ee7e76baa36bcbd43b"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_rate_limiter.py",
+      "sha256": "3b5e85b964914d58eef20bc4753365803ef88e368b06618f100c84805ce18c69"
+    }
+  },
+  "notes": "Contains deliberate arid bait: __repr__, two logging calls. Those mutants should be caught by Tier-0 triage, not by a test. Also the only class in the corpus, so it exercises mutmut's x<SEP>Class<SEP>method mangling."
+}

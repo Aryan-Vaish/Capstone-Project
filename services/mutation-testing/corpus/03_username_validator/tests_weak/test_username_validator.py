@@ -1,4 +1,4 @@
-from module import validate_username, count_vowels
+from username_validator import validate_username, count_vowels
 
 def test_validate_username_valid():
     assert validate_username("user_123") is True

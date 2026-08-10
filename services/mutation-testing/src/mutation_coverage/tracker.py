@@ -2,45 +2,113 @@
 Coverage Tracker
 ==================
 Determines which lines of the ORIGINAL (unmutated) source are actually
-exercised by the stable test suite. This runs once per mutation-testing
-request, BEFORE looking at mutants, using Python's own `coverage` package.
+exercised by the test suite. Runs once per mutation-testing request, before
+any mutant is considered, using Python's own `coverage` package.
 
-Why this matters: a mutant that survives on a line NO test touches is a
-coverage gap ("nobody wrote a test for this line at all"), not a test-quality
-gap ("the test exists but doesn't check the right thing"). Conflating the
-two makes the explainability layer (later step) generate wrong advice --
-"you're missing an edge case test" is the wrong message when the real
-problem is "you have zero tests for this line".
+Why this matters: a mutant surviving on a line NO test touches is a coverage
+gap ("nobody tested this line at all"), not a test-quality gap ("a test runs
+this line but doesn't check the right thing"). Conflating the two makes the
+explainability layer give wrong advice -- "you're missing an edge case" is the
+wrong message when the real answer is "you have no tests for this line".
+
+NOTE ON THE PACKAGE NAME
+------------------------
+This package is `mutation_coverage`, not `coverage`. It was renamed after a real
+crash: SHAP depends on numba, numba imports the third-party `coverage` library,
+and a local package named `coverage/` earlier on sys.path shadowed it.
+
+FAIL LOUD, NOT SILENT
+---------------------
+This returned `set()` on any JSON parse failure, which is indistinguishable from
+"the suite genuinely covers nothing" -- and an empty coverage set routes EVERY
+mutant into the `uncovered` bucket, quietly emptying the active-survivor list
+and producing a run that looks finished and is entirely wrong. Failures now
+raise with the subprocess's stderr attached.
 """
+import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Set
+from typing import Dict, Set, Tuple
 
 
-def get_covered_lines(work_dir: Path, source_file: str) -> Set[int]:
+class CoverageError(RuntimeError):
+    """Coverage could not be measured. Never silently downgraded to 'nothing is
+    covered', because that is a valid-looking result that corrupts the run."""
+
+
+def _module_matches(fname: str, source_file: str) -> bool:
+    """coverage reports paths with the platform separator; normalise before
+    comparing (v1 only checked '/' and so never matched on Windows)."""
+    normalised = fname.replace("\\", "/")
+    target = source_file.replace("\\", "/")
+    return normalised == target or normalised.endswith("/" + target)
+
+
+def get_covered_lines(work_dir: Path, source_file: str,
+                      with_contexts: bool = False) -> Set[int]:
+    """Line numbers of `source_file` executed by at least one test.
+
+    Line numbers are absolute within the file, which is what makes them
+    comparable to the mutant line numbers produced by mutators/line_resolver.py.
     """
-    Runs the test suite in work_dir under coverage, against the ORIGINAL
-    (unmutated) source_file, and returns the set of line numbers that were
-    actually executed by at least one test.
+    covered, _ = get_coverage_detail(work_dir, source_file, with_contexts=with_contexts)
+    return covered
+
+
+def get_coverage_detail(work_dir: Path, source_file: str,
+                        with_contexts: bool = False) -> Tuple[Set[int], Dict[int, int]]:
+    """Returns (covered_lines, {line: number_of_distinct_tests_executing_it}).
+
+    The per-line test count is the cheapest available proxy for how strongly a
+    line is exercised -- closer to a causal predictor of "will a mutation here be
+    caught" than any purely static feature. It requires coverage's dynamic
+    contexts, so it is opt-in; without it the second element is empty.
     """
-    subprocess.run(
-        [sys.executable, "-m", "coverage", "run", "--source", source_file.replace(".py", ""),
+    module_name = source_file[:-3] if source_file.endswith(".py") else source_file
+
+    if with_contexts:
+        (work_dir / ".coveragerc").write_text(
+            "[run]\ndynamic_context = test_function\n", encoding="utf-8"
+        )
+
+    run = subprocess.run(
+        [sys.executable, "-m", "coverage", "run", "--source", module_name,
          "-m", "pytest", "-q"],
         cwd=str(work_dir), capture_output=True, text=True,
     )
+
     report = subprocess.run(
-        [sys.executable, "-m", "coverage", "json", "-o", "-"],
+        [sys.executable, "-m", "coverage", "json", "-o", "-"]
+        + (["--show-contexts"] if with_contexts else []),
         cwd=str(work_dir), capture_output=True, text=True,
     )
-    import json
+
     try:
         data = json.loads(report.stdout)
-    except json.JSONDecodeError:
-        return set()
+    except json.JSONDecodeError as exc:
+        raise CoverageError(
+            f"coverage produced no parseable JSON for {source_file}.\n"
+            f"  coverage json stderr: {report.stderr.strip()[:500]}\n"
+            f"  pytest run stderr:    {run.stderr.strip()[:500]}\n"
+            f"  pytest run stdout:    {run.stdout.strip()[:500]}"
+        ) from exc
 
-    module_key = source_file  # coverage keys files by their relative path
     for fname, filedata in data.get("files", {}).items():
-        if fname == source_file or fname.endswith("/" + source_file):
-            return set(filedata["executed_lines"])
-    return set()
+        if not _module_matches(fname, source_file):
+            continue
+        covered = set(filedata.get("executed_lines", []))
+        counts: Dict[int, int] = {}
+        contexts = filedata.get("contexts") or {}
+        for line_str, ctx_list in contexts.items():
+            try:
+                counts[int(line_str)] = len({c for c in ctx_list if c})
+            except (TypeError, ValueError):
+                continue
+        return covered, counts
+
+    raise CoverageError(
+        f"{source_file} did not appear in the coverage report. "
+        f"Files reported: {sorted(data.get('files', {}))[:10]}. "
+        f"This usually means the tests never imported the module under test."
+    )

@@ -1,0 +1,50 @@
+{
+  "id": "06",
+  "slug": "text_tokenizer",
+  "module_key": "corpus/06_text_tokenizer/text_tokenizer.py",
+  "domain": "text-processing",
+  "loc": 39,
+  "control_flow_features": [
+    "while_loop",
+    "for_loop",
+    "continue",
+    "early_return",
+    "default_argument"
+  ],
+  "target_operator_families": [
+    "constant",
+    "call",
+    "logical",
+    "control_flow"
+  ],
+  "intended_suite_tier": "weak",
+  "omitted_test_cases": [
+    "keep_stop_words=True",
+    "first_long_word entirely, including its min_length=4 default",
+    "runs of trailing punctuation",
+    "empty input to tokenize",
+    "consecutive separators producing empty fragments",
+    "that normalize lowercases rather than uppercases"
+  ],
+  "provenance": {
+    "generator": "claude-opus-5",
+    "author": "Claude Code, interactive session",
+    "generated_at": "2026-08-11",
+    "human_edited": false,
+    "note": "Authored in-session against the written spec in this file. See corpus/GENERATION.md for the reproducibility statement."
+  },
+  "files": {
+    "source": {
+      "path": "text_tokenizer.py",
+      "sha256": "d51299fba8aa3798206de12c4cc63799cb9e81a89c9b103f523faf95ea72a62e"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_text_tokenizer.py",
+      "sha256": "827e19e98579ccbe4ff3e32a371d086d31124a4477a87c925f19d679b24a9395"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_text_tokenizer.py",
+      "sha256": "994c7eb3c293dfc08a61de1fe404e766a9fff6c13824aa8fc06b637ffdc13a50"
+    }
+  }
+}

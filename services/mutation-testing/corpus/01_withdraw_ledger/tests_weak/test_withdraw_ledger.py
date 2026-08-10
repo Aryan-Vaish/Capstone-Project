@@ -1,4 +1,4 @@
-from module import withdraw
+from withdraw_ledger import withdraw
 
 def test_withdraw_success():
     assert withdraw(100, 40) == 60

@@ -1,0 +1,19 @@
+# Python bytecode. Note: some __pycache__ files were committed earlier in the
+# project's history and are deliberately left in place; this only stops new ones.
+__pycache__/
+*.py[cod]
+
+# Test / tooling caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Environments
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+Thumbs.db

@@ -1,0 +1,50 @@
+{
+  "id": "09",
+  "slug": "stats_summary",
+  "module_key": "corpus/09_stats_summary/stats_summary.py",
+  "domain": "statistics",
+  "loc": 45,
+  "control_flow_features": [
+    "guard_clause",
+    "for_loop",
+    "lambda",
+    "sorted",
+    "augmented_assignment",
+    "default_argument"
+  ],
+  "target_operator_families": [
+    "arithmetic",
+    "comparison",
+    "assignment",
+    "call"
+  ],
+  "intended_suite_tier": "weak",
+  "omitted_test_cases": [
+    "even-length median (so // and % 2 mutations survive)",
+    "top_n_by_score entirely, including the lambda key and reverse=True",
+    "empty-list guards on all four functions",
+    "that mean accumulates every element rather than the last",
+    "exact values from summarize"
+  ],
+  "provenance": {
+    "generator": "claude-opus-5",
+    "author": "Claude Code, interactive session",
+    "generated_at": "2026-08-11",
+    "human_edited": false,
+    "note": "Authored in-session against the written spec in this file. See corpus/GENERATION.md for the reproducibility statement."
+  },
+  "files": {
+    "source": {
+      "path": "stats_summary.py",
+      "sha256": "6123dbb667e425c6462b13e3f0ad7e91c015ea85a9ca818fa8466bfa3cb5fc77"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_stats_summary.py",
+      "sha256": "a440bb00b26117b7c61e0c86690614787864bd8d1ecd3163cdcb2a93e11b7686"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_stats_summary.py",
+      "sha256": "df6d7ec6c1e0c46e5c1b2c216eb45bf0faefd96284a0fb47edc55958c4b093c1"
+    }
+  }
+}

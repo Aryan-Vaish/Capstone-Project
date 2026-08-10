@@ -1,0 +1,41 @@
+{
+  "id": "01",
+  "slug": "withdraw_ledger",
+  "module_key": "corpus/01_withdraw_ledger/withdraw_ledger.py",
+  "domain": "finance",
+  "loc": 4,
+  "control_flow_features": [
+    "guard_clause",
+    "raise"
+  ],
+  "target_operator_families": [
+    "comparison",
+    "arithmetic",
+    "constant"
+  ],
+  "intended_suite_tier": "strong",
+  "omitted_test_cases": [
+    "amount exactly equal to balance (the > boundary)",
+    "exact text of the ValueError message",
+    "a case distinguishing balance - amount from balance + amount"
+  ],
+  "provenance": {
+    "generator": "human",
+    "author": "project team (Days 1-3)",
+    "note": "Hand-written before the Day 5 corpus work. Retained unmodified as a non-AI anchor: the benchmark must not consist solely of code produced by the same model family the tooling is evaluated with."
+  },
+  "files": {
+    "source": {
+      "path": "withdraw_ledger.py",
+      "sha256": "3c75589bb2951ccb71e53dc0d17e70a1f7f2c077709def47f4399c0053fbc237"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_withdraw_ledger.py",
+      "sha256": "63a12d6584481dd777f7ed0a9bacacde844d79d1a9ae36628732532efea05951"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_withdraw_ledger.py",
+      "sha256": "05581e9bd78430140fe6e79bfe9d37f9eac558ec11db5f754e8c122957ee38df"
+    }
+  }
+}

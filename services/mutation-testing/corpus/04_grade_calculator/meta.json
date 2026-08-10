@@ -1,0 +1,47 @@
+{
+  "id": "04",
+  "slug": "grade_calculator",
+  "module_key": "corpus/04_grade_calculator/grade_calculator.py",
+  "domain": "education",
+  "loc": 35,
+  "control_flow_features": [
+    "elif_ladder",
+    "dict_lookup",
+    "for_loop",
+    "zip"
+  ],
+  "target_operator_families": [
+    "comparison",
+    "constant",
+    "arithmetic",
+    "call"
+  ],
+  "intended_suite_tier": "strong",
+  "omitted_test_cases": [
+    "the 70 and 60 band boundaries",
+    "total_weight == 0 short circuit",
+    "weighted_average accumulating more than two elements",
+    "rounding behaviour of weighted_average"
+  ],
+  "provenance": {
+    "generator": "claude-opus-5",
+    "author": "Claude Code, interactive session",
+    "generated_at": "2026-08-11",
+    "human_edited": false,
+    "note": "Authored in-session against the written spec in this file. See corpus/GENERATION.md for the reproducibility statement."
+  },
+  "files": {
+    "source": {
+      "path": "grade_calculator.py",
+      "sha256": "a9a7d012a8c1023ff29939d6ec7ee4f6e116cd89ba04eee001feededb01f1bbc"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_grade_calculator.py",
+      "sha256": "5c9a1e1df3b688ad62367599b3fea31f2ee3233bef08c59fd8786c2040fc6cb5"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_grade_calculator.py",
+      "sha256": "70e9d661d7ac84b273b1fb5d8a6f8c56c38374d9a250e1d9cf3bd596cc95eff7"
+    }
+  }
+}

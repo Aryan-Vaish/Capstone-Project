@@ -1,0 +1,50 @@
+{
+  "id": "10",
+  "slug": "order_state_machine",
+  "module_key": "corpus/10_order_state_machine/order_state_machine.py",
+  "domain": "workflow",
+  "loc": 63,
+  "control_flow_features": [
+    "dict_dispatch",
+    "try_except_else",
+    "for_loop",
+    "continue",
+    "break",
+    "set_membership"
+  ],
+  "target_operator_families": [
+    "logical",
+    "control_flow",
+    "comparison",
+    "call"
+  ],
+  "intended_suite_tier": "medium",
+  "omitted_test_cases": [
+    "apply_events entirely (uncovered)",
+    "reachable_states entirely (uncovered)",
+    "the `current is None` guard",
+    "the terminal-state break",
+    "unknown current state in can_transition"
+  ],
+  "provenance": {
+    "generator": "claude-opus-5",
+    "author": "Claude Code, interactive session",
+    "generated_at": "2026-08-11",
+    "human_edited": false,
+    "note": "Authored in-session against the written spec in this file. See corpus/GENERATION.md for the reproducibility statement."
+  },
+  "files": {
+    "source": {
+      "path": "order_state_machine.py",
+      "sha256": "26d8fd62e0ae8a10fe763a3733bdb838d82892ed92184034a916bdf9b27366fb"
+    },
+    "tests_weak": {
+      "path": "tests_weak/test_order_state_machine.py",
+      "sha256": "8674e320c11526c3c7d2c0619767e51336c94db3b240789771f4d822cf579540"
+    },
+    "tests_strong": {
+      "path": "tests_strong/test_order_state_machine.py",
+      "sha256": "1acbd72e5f2123668239c6f359195a0c528f6e0e14307763af2338ca47874628"
+    }
+  }
+}

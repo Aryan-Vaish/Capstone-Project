@@ -1,0 +1,223 @@
+{
+  "corpus_version": "v2",
+  "n_modules": 10,
+  "by_provenance": {
+    "human": 3,
+    "claude-opus-5": 7
+  },
+  "by_intended_tier": {
+    "strong": 2,
+    "medium": 4,
+    "weak": 3,
+    "untested_function": 1
+  },
+  "modules": [
+    {
+      "id": "01",
+      "slug": "withdraw_ledger",
+      "dir": "01_withdraw_ledger",
+      "module_key": "corpus/01_withdraw_ledger/withdraw_ledger.py",
+      "source": "corpus/01_withdraw_ledger/withdraw_ledger.py",
+      "tests_weak": "corpus/01_withdraw_ledger/tests_weak",
+      "tests_strong": "corpus/01_withdraw_ledger/tests_strong",
+      "intended_suite_tier": "strong",
+      "target_operator_families": [
+        "comparison",
+        "arithmetic",
+        "constant"
+      ],
+      "provenance_generator": "human",
+      "test_counts": {
+        "weak": 2,
+        "strong": 5
+      }
+    },
+    {
+      "id": "02",
+      "slug": "discount_pricing",
+      "dir": "02_discount_pricing",
+      "module_key": "corpus/02_discount_pricing/discount_pricing.py",
+      "source": "corpus/02_discount_pricing/discount_pricing.py",
+      "tests_weak": "corpus/02_discount_pricing/tests_weak",
+      "tests_strong": "corpus/02_discount_pricing/tests_strong",
+      "intended_suite_tier": "medium",
+      "target_operator_families": [
+        "comparison",
+        "logical",
+        "arithmetic",
+        "constant"
+      ],
+      "provenance_generator": "human",
+      "test_counts": {
+        "weak": 4,
+        "strong": 14
+      }
+    },
+    {
+      "id": "03",
+      "slug": "username_validator",
+      "dir": "03_username_validator",
+      "module_key": "corpus/03_username_validator/username_validator.py",
+      "source": "corpus/03_username_validator/username_validator.py",
+      "tests_weak": "corpus/03_username_validator/tests_weak",
+      "tests_strong": "corpus/03_username_validator/tests_strong",
+      "intended_suite_tier": "weak",
+      "target_operator_families": [
+        "comparison",
+        "logical",
+        "constant"
+      ],
+      "provenance_generator": "human",
+      "test_counts": {
+        "weak": 4,
+        "strong": 13
+      }
+    },
+    {
+      "id": "04",
+      "slug": "grade_calculator",
+      "dir": "04_grade_calculator",
+      "module_key": "corpus/04_grade_calculator/grade_calculator.py",
+      "source": "corpus/04_grade_calculator/grade_calculator.py",
+      "tests_weak": "corpus/04_grade_calculator/tests_weak",
+      "tests_strong": "corpus/04_grade_calculator/tests_strong",
+      "intended_suite_tier": "strong",
+      "target_operator_families": [
+        "comparison",
+        "constant",
+        "arithmetic",
+        "call"
+      ],
+      "provenance_generator": "claude-opus-5",
+      "test_counts": {
+        "weak": 7,
+        "strong": 23
+      }
+    },
+    {
+      "id": "05",
+      "slug": "leap_year_dates",
+      "dir": "05_leap_year_dates",
+      "module_key": "corpus/05_leap_year_dates/leap_year_dates.py",
+      "source": "corpus/05_leap_year_dates/leap_year_dates.py",
+      "tests_weak": "corpus/05_leap_year_dates/tests_weak",
+      "tests_strong": "corpus/05_leap_year_dates/tests_strong",
+      "intended_suite_tier": "medium",
+      "target_operator_families": [
+        "arithmetic",
+        "logical",
+        "comparison",
+        "constant"
+      ],
+      "provenance_generator": "claude-opus-5",
+      "test_counts": {
+        "weak": 7,
+        "strong": 23
+      }
+    },
+    {
+      "id": "06",
+      "slug": "text_tokenizer",
+      "dir": "06_text_tokenizer",
+      "module_key": "corpus/06_text_tokenizer/text_tokenizer.py",
+      "source": "corpus/06_text_tokenizer/text_tokenizer.py",
+      "tests_weak": "corpus/06_text_tokenizer/tests_weak",
+      "tests_strong": "corpus/06_text_tokenizer/tests_strong",
+      "intended_suite_tier": "weak",
+      "target_operator_families": [
+        "constant",
+        "call",
+        "logical",
+        "control_flow"
+      ],
+      "provenance_generator": "claude-opus-5",
+      "test_counts": {
+        "weak": 4,
+        "strong": 20
+      }
+    },
+    {
+      "id": "07",
+      "slug": "permission_flags",
+      "dir": "07_permission_flags",
+      "module_key": "corpus/07_permission_flags/permission_flags.py",
+      "source": "corpus/07_permission_flags/permission_flags.py",
+      "tests_weak": "corpus/07_permission_flags/tests_weak",
+      "tests_strong": "corpus/07_permission_flags/tests_strong",
+      "intended_suite_tier": "medium",
+      "target_operator_families": [
+        "arithmetic",
+        "comparison",
+        "constant"
+      ],
+      "provenance_generator": "claude-opus-5",
+      "test_counts": {
+        "weak": 5,
+        "strong": 10
+      }
+    },
+    {
+      "id": "08",
+      "slug": "rate_limiter",
+      "dir": "08_rate_limiter",
+      "module_key": "corpus/08_rate_limiter/rate_limiter.py",
+      "source": "corpus/08_rate_limiter/rate_limiter.py",
+      "tests_weak": "corpus/08_rate_limiter/tests_weak",
+      "tests_strong": "corpus/08_rate_limiter/tests_strong",
+      "intended_suite_tier": "untested_function",
+      "target_operator_families": [
+        "comparison",
+        "arithmetic",
+        "constant",
+        "call"
+      ],
+      "provenance_generator": "claude-opus-5",
+      "test_counts": {
+        "weak": 3,
+        "strong": 13
+      }
+    },
+    {
+      "id": "09",
+      "slug": "stats_summary",
+      "dir": "09_stats_summary",
+      "module_key": "corpus/09_stats_summary/stats_summary.py",
+      "source": "corpus/09_stats_summary/stats_summary.py",
+      "tests_weak": "corpus/09_stats_summary/tests_weak",
+      "tests_strong": "corpus/09_stats_summary/tests_strong",
+      "intended_suite_tier": "weak",
+      "target_operator_families": [
+        "arithmetic",
+        "comparison",
+        "assignment",
+        "call"
+      ],
+      "provenance_generator": "claude-opus-5",
+      "test_counts": {
+        "weak": 4,
+        "strong": 15
+      }
+    },
+    {
+      "id": "10",
+      "slug": "order_state_machine",
+      "dir": "10_order_state_machine",
+      "module_key": "corpus/10_order_state_machine/order_state_machine.py",
+      "source": "corpus/10_order_state_machine/order_state_machine.py",
+      "tests_weak": "corpus/10_order_state_machine/tests_weak",
+      "tests_strong": "corpus/10_order_state_machine/tests_strong",
+      "intended_suite_tier": "medium",
+      "target_operator_families": [
+        "logical",
+        "control_flow",
+        "comparison",
+        "call"
+      ],
+      "provenance_generator": "claude-opus-5",
+      "test_counts": {
+        "weak": 5,
+        "strong": 22
+      }
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-from module import apply_discount, is_eligible_for_free_shipping
+from discount_pricing import apply_discount, is_eligible_for_free_shipping
 
 def test_apply_discount_normal():
     assert apply_discount(100, 10) == 90.0
