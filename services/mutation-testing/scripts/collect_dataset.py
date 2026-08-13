@@ -48,6 +48,7 @@ for p in (str(REPO_ROOT), str(SERVICE_ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+from evaluation.stats import rank_order_summary, wilson_interval  # noqa: E402
 from features.extractor import extract_features           # noqa: E402
 from harness.executor import run_mutation_analysis        # noqa: E402
 from mutators.taxonomy import OTHER, TAXONOMY_VERSION     # noqa: E402
@@ -61,6 +62,26 @@ REPORTS = SERVICE_ROOT / "reports"
 # train on and the run says so rather than quietly producing a model.
 MAX_UNCLASSIFIED_RATE = 0.05
 MAX_UNRESOLVED_RATE = 0.05
+
+# Gate 4: the Tier-0 equivalence filter's measured precision. A mutant the test
+# suite KILLED that the filter called unkillable is a false positive, observable
+# without any oracle. This gate exists because `mutation_score_adjusted`
+# subtracts the filter's output from its denominator -- so without it the
+# pipeline would be grading itself, and an over-flagging filter would be
+# rewarded with a higher score. The denominator is measured, not trusted.
+MIN_TRIAGE_PRECISION = 0.85
+
+# Suite-strength ordinal, lowest first. `untested_function` is deliberately
+# absent: it is a coverage claim, not a point on this scale, and gets its own
+# targeted check below.
+TIER_ORDER = ("weak", "medium", "strong")
+
+# Wide rails, justified by what they DETECT rather than by what we expect. These
+# catch harness breakage (a module scoring 0.0 or 1.0 usually means the suite
+# did not run), not tier miscalibration -- that is the trend test's job.
+SANITY_MIN_SCORE = 0.05
+SANITY_MAX_SCORE = 0.98
+MAX_UNCOVERED_RATE_NON_08 = 0.5
 
 
 def git_sha(path: Path) -> str:
@@ -127,6 +148,7 @@ def collect_one(entry: Dict, suite: str, run_id: str, shas: Dict,
                 module_slug=entry["dir"], suite=suite,
                 function_name=m.function_name, class_name=m.class_name,
                 line_resolution=m.resolution_method,
+                removed_line=m.removed_line, added_line=m.added_line,
                 triage_status=triage.status,
                 triage_confidence=triage.confidence,
                 triage_reason_code=triage.reason_code,
@@ -135,11 +157,59 @@ def collect_one(entry: Dict, suite: str, run_id: str, shas: Dict,
                 conn=conn,
             )
 
+    # All three scores, transcribed verbatim from main.py's definitions so the
+    # two code paths can never report different numbers under the same name.
+    # See shared/schemas/mutation_schema.py for what each one means.
     total = stats["total"]
+    equiv = stats["equivalent_suspected"]
+    active = stats["active_survivor"]
+    adjusted_denom = total - equiv
+    strength_denom = stats["killed"] + active
+
     stats["mutation_score"] = round(stats["killed"] / total, 3) if total else 0.0
+    stats["mutation_score_adjusted"] = (
+        round(stats["killed"] / adjusted_denom, 3) if adjusted_denom > 0 else 0.0
+    )
+    stats["test_strength"] = (
+        round(stats["killed"] / strength_denom, 3) if strength_denom > 0 else 0.0
+    )
     stats["elapsed_s"] = round(time.time() - started, 1)
     stats["_unclassified_rows"] = unclassified_rows
     return stats
+
+
+def _triage_precision(schema_version: str = DATASET_SCHEMA_VERSION) -> Dict:
+    """Measured precision of the Tier-0 equivalence filter, no oracle required.
+
+    A mutant the filter called `equivalent_suspected` that the SAME suite then
+    KILLED is a demonstrated false positive -- the mutant was observable after
+    all. This needs no cross-suite join and no assumption about the strong
+    suite's adequacy, which makes it the cheapest and cleanest measurement
+    available.
+
+    Only weak-suite rows count, since that is the suite whose scores the tier
+    gate judges.
+    """
+    with connection() as conn:
+        row = conn.execute(
+            """SELECT
+                   SUM(triage_status = 'equivalent_suspected')                       AS flagged,
+                   SUM(triage_status = 'equivalent_suspected' AND outcome = 'killed') AS killed_anyway
+               FROM mutants
+               WHERE dataset_schema_version = ? AND suite = 'weak'""",
+            (schema_version,),
+        ).fetchone()
+
+    flagged = row[0] or 0
+    killed_anyway = row[1] or 0
+    correct = flagged - killed_anyway
+    precision = (correct / flagged) if flagged else 1.0
+    return {
+        "flagged": flagged,
+        "killed_anyway": killed_anyway,
+        "precision": precision,
+        "ci": wilson_interval(correct, flagged) if flagged else (1.0, 1.0),
+    }
 
 
 def main() -> int:
@@ -239,22 +309,94 @@ def main() -> int:
                         f"{MAX_UNRESOLVED_RATE:.0%} -- the line resolver is missing "
                         f"cases; coverage gating cannot be trusted until it is fixed")
 
-    # measured score vs. the tier declared before measurement
-    tier_bands = {"strong": (0.80, 1.01), "medium": (0.45, 0.85),
-                  "weak": (0.10, 0.60), "untested_function": (0.0, 0.80)}
+    # --- Gate 4: equivalence-filter precision, measured without an oracle ---
+    triage_stats = _triage_precision()
+    if triage_stats["flagged"] > 0:
+        prec = triage_stats["precision"]
+        lo, hi = triage_stats["ci"]
+        print(f"\ntriage precision:     {prec:.3f} "
+              f"[{lo:.3f}, {hi:.3f}]  "
+              f"({triage_stats['flagged'] - triage_stats['killed_anyway']}"
+              f"/{triage_stats['flagged']} flags survived the suite that flagged them)")
+        if prec < MIN_TRIAGE_PRECISION:
+            failures.append(
+                f"triage precision {prec:.3f} below {MIN_TRIAGE_PRECISION:.2f} -- the "
+                f"equivalence filter flagged {triage_stats['killed_anyway']} mutant(s) "
+                f"the suite went on to KILL, so they were never equivalent. "
+                f"mutation_score_adjusted cannot be trusted until this is fixed; "
+                f"run scripts/analyze_collection.py for the per-rule breakdown")
+
+    # --- tier validation: pre-registered ordinal trend, not invented bands ---
+    #
+    # The previous gate compared each module against a hand-picked numeric band
+    # per tier. Those bands overlapped (0.50 satisfied both `weak` 0.10-0.60 and
+    # `medium` 0.45-0.85, so adjacent tiers were indistinguishable) and
+    # contradicted the percentages pre-registered in corpus/GENERATION.md.
+    #
+    # This uses only what was genuinely pre-registered -- the ordinal tier label
+    # -- and tests one prediction: scores increase across weak < medium < strong.
+    # It invents no numbers, so nothing can be fitted to the data it validates,
+    # and being rank-based it gives the same verdict under either score metric.
     by_dir = {e["dir"]: e for e in entries}
-    print("\ndeclared tier vs. measured weak-suite score:")
-    for s in all_stats:
-        if s["suite"] != "weak":
-            continue
+    weak_runs = [s for s in all_stats if s["suite"] == "weak"]
+
+    print("\ndeclared tier vs. measured weak-suite scores:")
+    print(f"  {'module':<26} {'tier':<18} {'raw':>7} {'adjusted':>9} {'strength':>9}")
+    for s in sorted(weak_runs, key=lambda x: x["module"]):
         tier = by_dir[s["module"]]["intended_suite_tier"]
-        lo, hi = tier_bands.get(tier, (0.0, 1.01))
-        ok = lo <= s["mutation_score"] <= hi
-        print(f"  {s['module']:<26} {tier:<18} {s['mutation_score']:.3f}  "
-              f"{'ok' if ok else 'OUT OF BAND'}")
-        if not ok:
-            failures.append(f"{s['module']}: declared {tier}, measured "
-                            f"{s['mutation_score']:.3f} (expected {lo:.2f}-{hi:.2f})")
+        print(f"  {s['module']:<26} {tier:<18} {s['mutation_score']:>7.3f} "
+              f"{s['mutation_score_adjusted']:>9.3f} {s['test_strength']:>9.3f}")
+
+    for metric in ("mutation_score", "mutation_score_adjusted"):
+        labelled = [(s["module"], by_dir[s["module"]]["intended_suite_tier"], s[metric])
+                    for s in weak_runs]
+        trend = rank_order_summary(labelled, TIER_ORDER)
+        if trend.get("p_value") is None:
+            print(f"\ntrend test ({metric}): {trend['method']}")
+            continue
+        print(f"\ntrend test ({metric}): "
+              f"p = {trend['p_value']:.4f} "
+              f"(exact, {trend['n_partitions']} partitions, n={trend['n']})")
+        for tier in TIER_ORDER:
+            t = trend["per_tier"][tier]
+            if t["n"]:
+                print(f"    {tier:<8} n={t['n']}  mean={t['mean']:.3f}  "
+                      f"scores={t['scores']}")
+        if metric == "mutation_score" and trend["p_value"] > 0.05:
+            failures.append(
+                f"tier ordering not supported (p={trend['p_value']:.4f}): measured "
+                f"scores do not increase across {' < '.join(TIER_ORDER)}. Either a "
+                f"suite does not match its declared tier, or the pipeline is "
+                f"mismeasuring. Do NOT relabel tiers to fix this")
+
+    # --- wide sanity rails: harness breakage, not tier miscalibration ---
+    for s in weak_runs:
+        score = s["mutation_score_adjusted"]
+        if not (SANITY_MIN_SCORE <= score <= SANITY_MAX_SCORE):
+            failures.append(f"{s['module']}: adjusted score {score:.3f} outside "
+                            f"[{SANITY_MIN_SCORE}, {SANITY_MAX_SCORE}] -- suspect the "
+                            f"harness or the suite, not the tier")
+        uncovered_rate = s["uncovered"] / s["total"] if s["total"] else 0.0
+        tier = by_dir[s["module"]]["intended_suite_tier"]
+        if tier != "untested_function" and uncovered_rate > MAX_UNCOVERED_RATE_NON_08:
+            failures.append(f"{s['module']}: {uncovered_rate:.0%} of mutants uncovered "
+                            f"but tier is {tier}, not untested_function")
+
+    # --- module 08: a coverage claim, checked as one ---
+    untested = [s for s in weak_runs
+                if by_dir[s["module"]]["intended_suite_tier"] == "untested_function"]
+    if untested and len(weak_runs) > 1:
+        rates = {s["module"]: (s["uncovered"] / s["total"] if s["total"] else 0.0)
+                 for s in weak_runs}
+        highest = max(rates, key=rates.get)
+        for s in untested:
+            print(f"\nuntested_function check: {s['module']} uncovered rate "
+                  f"{rates[s['module']]:.1%}; corpus max is {highest} "
+                  f"({rates[highest]:.1%})")
+            if highest != s["module"]:
+                failures.append(
+                    f"{s['module']} is tiered untested_function but {highest} has a "
+                    f"higher uncovered rate -- the tier claim does not hold")
 
     if failures:
         print("\nGATE FAILURES -- do not train on this dataset yet:")

@@ -88,6 +88,27 @@ figure. A module declared `strong` that measures 0.3 means the module or its sui
 wrong — not that the tool found something. That check is far more persuasive than a bare
 table of scores, and it is only available because the tier was written down first.
 
+> **Amendment (2026-08-13), after the first collection run.** The percentages above are
+> retained verbatim as the honest record of what was predicted. Two caveats now attach to
+> them, and neither is a reason to quietly edit the numbers.
+>
+> **They do not specify a denominator.** "Kill rate" is ambiguous between the three scores
+> defined in `shared/schemas/mutation_schema.py`, and the first implementation silently
+> chose `killed / total`. The percentages are therefore reported **descriptively** —
+> "declared 85–95%, measured 0.77 adjusted / 0.70 raw" — rather than used as a pass/fail
+> threshold.
+>
+> **The pass/fail verdict now comes from the ordinal, not the percentages.** The
+> implemented numeric bands turned out to overlap between adjacent tiers, so a single score
+> could satisfy two tiers at once and the gate could not discriminate them even in
+> principle. They are replaced by an exact Jonckheere–Terpstra test of the prediction that
+> measured scores increase across `weak < medium < strong`. That uses only the **ordinal**
+> labels above — which is the part of this table that was genuinely pre-registered — and
+> introduces no free parameters, so nothing can be fitted to the data it validates.
+>
+> See [ADR-004](../../../docs/Architecture/ADR-004-triage-precision-and-tier-validation.md)
+> for the full reasoning and the disclosure wording for the report.
+
 ## 4. Per-module specification
 
 Each `meta.json` carries the full record. The load-bearing field is

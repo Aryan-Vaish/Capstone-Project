@@ -67,6 +67,10 @@ class Mutant:
     qualified_name: str = ""           # "Class.method" or "function"
     resolution_method: str = ""        # how line_number was determined
     classification_detail: str = ""    # token substitution, for the unclassified log
+    # The single changed line, before/after. Persisted so triage and operator
+    # classification can be replayed offline without re-running mutmut.
+    removed_line: Optional[str] = None
+    added_line: Optional[str] = None
 
 
 def setup_mutmut_config(work_dir: Path, source_file: str, tests_dir: str) -> None:
@@ -157,6 +161,8 @@ def collect_results(work_dir: Path, original_source: Path,
             diff=diff_text,
             resolution_method=method,
             classification_detail=classification.detail,
+            removed_line=classification.removed_line,
+            added_line=classification.added_line,
         ))
     return mutants
 

@@ -133,6 +133,33 @@ def test_reinsert_updates_instead_of_duplicating(sample_module):
     assert rows[0]["outcome"] == "killed"
 
 
+def test_changed_lines_are_persisted_for_offline_replay(sample_module):
+    """Storing the changed line is what makes triage rules replayable without
+    re-running mutmut. Before this, iterating on a filter rule cost a 30-60 min
+    Linux-only collection run just to observe the effect -- which is why the
+    equivalence-filter defect took a full round trip to diagnose."""
+    f = extract_features(sample_module, 2, tx.STRING_LITERAL_CHANGE, True)
+    db.insert_record(
+        "replay", "corpus/sample/sample.py", "sample.x_simple__mutmut_9", f,
+        "active_survivor", suite="weak",
+        removed_line='    return "A"', added_line='    return "XXAXX"',
+    )
+    row = next(r for r in db.fetch_all_records()
+               if r["mutant_id"] == "sample.x_simple__mutmut_9")
+    assert row["removed_line"] == '    return "A"'
+    assert row["added_line"] == '    return "XXAXX"'
+
+
+def test_changed_lines_are_optional(sample_module):
+    """Rows collected before this column existed must still insert."""
+    f = extract_features(sample_module, 2, tx.ARITHMETIC_REPLACEMENT, True)
+    db.insert_record("nolines", "corpus/sample/sample.py", "sample.x_simple__mutmut_10",
+                     f, "killed", suite="weak")
+    row = next(r for r in db.fetch_all_records()
+               if r["mutant_id"] == "sample.x_simple__mutmut_10")
+    assert row["removed_line"] is None
+
+
 def test_training_population_excludes_uncovered_and_arid(sample_module):
     """Training must match inference conditions. `covered = 0` implies the line
     never runs, which implies the mutant cannot be killed -- so including those

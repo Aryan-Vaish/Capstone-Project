@@ -74,6 +74,14 @@ CREATE TABLE IF NOT EXISTS mutants (
     line_number INTEGER,
     line_resolution TEXT,          -- content_unique | content_disambiguated | unresolved
 
+    -- The single changed line, before and after. Stored so that triage and
+    -- operator classification can be REPLAYED OFFLINE against stored rows.
+    -- Without these, changing a triage rule meant re-running mutmut over the
+    -- whole corpus (30-60 min, and Linux-only) just to see the effect -- which
+    -- is what made the arid-filter defect expensive to diagnose.
+    removed_line TEXT,
+    added_line TEXT,
+
     -- structural features (function-scoped in v2, not file-scoped)
     func_complexity INTEGER,
     func_loc INTEGER,
@@ -110,6 +118,7 @@ _COLUMNS = [
     "dataset_schema_version", "taxonomy_version", "pipeline_git_sha", "corpus_git_sha",
     "run_id", "module_key", "module_slug", "suite", "mutant_id", "function_name",
     "class_name", "operator", "operator_family", "line_number", "line_resolution",
+    "removed_line", "added_line",
     "func_complexity", "func_loc", "func_num_params", "func_num_returns",
     "func_num_branches", "node_depth_at_line", "rel_position_in_func",
     "in_conditional", "in_loop", "in_exception", "covered", "n_covering_tests",
@@ -156,6 +165,8 @@ def insert_record(
     function_name: str = "",
     class_name: Optional[str] = None,
     line_resolution: str = "",
+    removed_line: Optional[str] = None,
+    added_line: Optional[str] = None,
     triage_status: str = "",
     triage_confidence: Optional[float] = None,
     triage_reason_code: str = "",
@@ -182,6 +193,8 @@ def insert_record(
         "function_name": function_name,
         "class_name": class_name,
         "line_resolution": line_resolution,
+        "removed_line": removed_line,
+        "added_line": added_line,
         "triage_status": triage_status,
         "triage_confidence": triage_confidence,
         "triage_reason_code": triage_reason_code,

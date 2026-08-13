@@ -151,6 +151,8 @@ def run_mutation(req: MutationRunRequest):
                 function_name=m.function_name,
                 class_name=m.class_name,
                 line_resolution=m.resolution_method,
+                removed_line=m.removed_line,
+                added_line=m.added_line,
                 triage_status=triage.status,
                 triage_confidence=triage.confidence,
                 triage_reason_code=triage.reason_code,
