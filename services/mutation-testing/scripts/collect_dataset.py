@@ -39,7 +39,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +52,9 @@ from evaluation.stats import rank_order_summary, wilson_interval  # noqa: E402
 from features.extractor import extract_features           # noqa: E402
 from harness.executor import run_mutation_analysis        # noqa: E402
 from mutators.taxonomy import OTHER, TAXONOMY_VERSION     # noqa: E402
-from storage.db import DATASET_SCHEMA_VERSION, connection, insert_record  # noqa: E402
+from storage.db import (  # noqa: E402
+    DATASET_SCHEMA_VERSION, connection, db_path, insert_record,
+)
 from triage.arid_filter import triage_mutant              # noqa: E402
 
 CORPUS = SERVICE_ROOT / "corpus"
@@ -178,6 +180,48 @@ def collect_one(entry: Dict, suite: str, run_id: str, shas: Dict,
     return stats
 
 
+def _archive_existing(schema_version: str = DATASET_SCHEMA_VERSION) -> Optional[Path]:
+    """Snapshot the database before a run that would overwrite its rows.
+
+    Collection upserts on (schema_version, module_key, suite, mutant_id), so
+    re-running over an existing dataset silently replaces its `triage_status`
+    and `outcome` values. That is usually what you want -- except when the
+    previous run is the only record of how a since-changed rule behaved.
+
+    Losing it costs a 30-60 minute Linux-only re-run to notice and cannot be
+    recovered at all if the rule has already changed, so the snapshot is
+    automatic rather than a flag someone has to remember.
+    """
+    path = db_path()
+    if not path.exists():
+        return None
+    try:
+        with connection() as conn:
+            existing = conn.execute(
+                "SELECT COUNT(*) FROM mutants WHERE dataset_schema_version = ?",
+                (schema_version,),
+            ).fetchone()[0]
+    except Exception:
+        return None
+    if not existing:
+        return None
+
+    # Beside the database itself, not under SERVICE_ROOT -- a redirected
+    # MUTATION_DB_PATH (tests, a scratch run) must not drop artifacts in the repo.
+    archive_dir = path.parent / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    dest = archive_dir / f"mutants_pre_{stamp}.db"
+    shutil.copy2(path, dest)
+    try:
+        shown = dest.relative_to(SERVICE_ROOT)
+    except ValueError:
+        shown = dest
+    print(f"archived {existing} existing row(s) -> {shown}")
+    print("  (this run will overwrite them; the snapshot preserves the before/after)")
+    return dest
+
+
 def _triage_precision(schema_version: str = DATASET_SCHEMA_VERSION) -> Dict:
     """Measured precision of the Tier-0 equivalence filter, no oracle required.
 
@@ -237,6 +281,8 @@ def main() -> int:
     if args.only:
         entries = [e for e in entries if args.only in e["dir"]]
     suites = [s.strip() for s in args.suites.split(",") if s.strip()]
+
+    _archive_existing()
 
     run_id = str(uuid4())
     shas = {"pipeline": git_sha(REPO_ROOT), "corpus": git_sha(REPO_ROOT)}

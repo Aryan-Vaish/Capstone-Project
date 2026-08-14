@@ -126,11 +126,65 @@ _COLUMNS = [
 ]
 
 
+def _expected_columns() -> Dict[str, str]:
+    """{column_name: declared_type} for the current SCHEMA.
+
+    Derived by building the table in an in-memory database and reading it back,
+    rather than from a hand-maintained list. A second declaration is exactly how
+    the schema drifted the first time: two columns were added to SCHEMA, no
+    migration was written, and every INSERT against an existing database failed
+    with `table mutants has no column named removed_line`.
+    """
+    probe = sqlite3.connect(":memory:")
+    try:
+        probe.execute(SCHEMA)
+        return {row[1]: row[2] for row in probe.execute("PRAGMA table_info(mutants)")}
+    finally:
+        probe.close()
+
+
+def _migrate(conn: sqlite3.Connection, announce: bool = True) -> List[str]:
+    """Add any columns present in SCHEMA but missing from an existing table.
+
+    `CREATE TABLE IF NOT EXISTS` is a no-op once the table exists, so new columns
+    never appear on a database created by an older version. Every column added so
+    far is nullable, which is what makes ALTER TABLE ADD COLUMN sufficient.
+
+    Returns the columns added, so callers can tell a migration from a no-op.
+    """
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(mutants)")}
+    if not existing:
+        return []                      # table absent; CREATE TABLE handles it
+
+    added: List[str] = []
+    for name, decl_type in _expected_columns().items():
+        if name in existing:
+            continue
+        try:
+            conn.execute(f"ALTER TABLE mutants ADD COLUMN {name} {decl_type}")
+        except sqlite3.OperationalError as exc:
+            # SQLite cannot ALTER-ADD a NOT NULL column without a default, nor a
+            # UNIQUE one. Fail loudly with what is needed to fix it rather than
+            # leaving a half-migrated table for the next INSERT to trip over.
+            raise sqlite3.OperationalError(
+                f"cannot add column {name!r} ({decl_type}) to the existing mutants "
+                f"table: {exc}. SQLite only supports adding nullable columns. "
+                f"Collect into a fresh database instead (move the current "
+                f"storage/mutants.db aside), or write an explicit table rebuild."
+            ) from exc
+        added.append(name)
+
+    if added and announce:
+        print(f"[storage] migrated mutants table: added {', '.join(added)}")
+    return added
+
+
 def init_db(path: Optional[Path] = None) -> None:
     target = path or db_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(target) as conn:
         conn.execute(SCHEMA)
+        _migrate(conn)
         for stmt in INDEXES:
             conn.execute(stmt)
 
