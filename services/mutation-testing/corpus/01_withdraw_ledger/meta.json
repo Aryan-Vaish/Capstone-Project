@@ -27,7 +27,7 @@
   "files": {
     "source": {
       "path": "withdraw_ledger.py",
-      "sha256": "3c75589bb2951ccb71e53dc0d17e70a1f7f2c077709def47f4399c0053fbc237"
+      "sha256": "59160ce50dba2b1b1c3977171b8c1f6d240eba63582a6b5b84c8666662838a00"
     },
     "tests_weak": {
       "path": "tests_weak/test_withdraw_ledger.py",

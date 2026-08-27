@@ -31,7 +31,7 @@
   "files": {
     "source": {
       "path": "discount_pricing.py",
-      "sha256": "5fb242c2c50e08ab753883332391594fcc7c25b7f4491abb4d414f0993e8b325"
+      "sha256": "9738beaba30a63ced0ac427080f18f0f15959a2d3cd23e584dd2cc45f568c730"
     },
     "tests_weak": {
       "path": "tests_weak/test_discount_pricing.py",

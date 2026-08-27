@@ -31,7 +31,7 @@
   "files": {
     "source": {
       "path": "username_validator.py",
-      "sha256": "a702413f11e9c8b021fb049ae005a8f8059363a28110e55603a40a51834ecdc1"
+      "sha256": "47f2792615a5208c54f3c236fe2102ad5011c85a12653cf6688e5ebbf8ad100c"
     },
     "tests_weak": {
       "path": "tests_weak/test_username_validator.py",

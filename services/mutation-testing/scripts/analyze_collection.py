@@ -125,8 +125,13 @@ def section_integrity(conn, version: str) -> Dict:
     if asymmetric:
         out["warnings"].append(
             f"{len(asymmetric)} module(s) have different mutant sets across suites "
-            f"({', '.join(asymmetric)}). mutmut statuses other than killed/survived "
-            f"are dropped by generator.py. Join-based sections are UNRELIABLE for these.")
+            f"({', '.join(asymmetric)}). mutmut gates mutant GENERATION on coverage, "
+            f"so a suite covering less produces fewer mutants -- confirmed: 07's "
+            f"strong-only mutants are exactly revoke/toggle, the functions the weak "
+            f"suite omits, and asymmetry is strictly one-directional (0 weak-only "
+            f"across all 10 modules). Join-based sections are UNRELIABLE for these, "
+            f"and per-suite scores are NOT comparable without a canonical "
+            f"denominator. See ADR-005.")
 
     # --- killed but not covered: a logical contradiction -----------------------
     contra = conn.execute(
@@ -556,13 +561,34 @@ def main() -> int:
     conn.close()
 
     rule("SUMMARY")
+    # Gate 4 reads SECTION 4 (oracle-refuted), never section 2. Section 2's
+    # population is `suite='weak' AND triage_status='equivalent_suspected'`,
+    # and the collector overwrites `outcome` to 'equivalent_suspected' for
+    # exactly those rows -- so SUM(outcome='killed') is identically 0 and the
+    # precision is 1.000 by construction. It cannot fail. See ADR-005.
+    ORACLE_TARGETED = {"string_literal_message"}
+    ref = report["oracle"]["refuted"]
+    a_flag = sum(v["flagged"] for v in ref.values())
+    a_ref = sum(v["refuted_by_oracle"] for v in ref.values())
+    g_flag = sum(v["flagged"] for k, v in ref.items()
+                 if k.split("/")[-1] not in ORACLE_TARGETED)
+    g_ref = sum(v["refuted_by_oracle"] for k, v in ref.items()
+                if k.split("/")[-1] not in ORACLE_TARGETED)
+    if a_flag:
+        print(f"  filter precision, ALL rules  : {1 - a_ref / a_flag:.3f} "
+              f"({a_ref} of {a_flag} refuted by the oracle)")
+    if g_flag:
+        gp = 1 - g_ref / g_flag
+        print(f"  GATE 4 (oracle-independent)  : {gp:.3f} "
+              f"({g_ref} of {g_flag} refuted)  [message rules excluded]")
+        if gp < 0.85:
+            print("  -> BELOW the 0.85 gate. Narrow the filter before trusting a score.")
+    else:
+        print("  GATE 4 (oracle-independent)  : UNMEASURABLE (no non-message flags)")
     tp = report["triage_precision"]
     if tp.get("flagged"):
-        print(f"  equivalence-filter precision : {tp['precision']:.3f} "
-              f"({tp['killed_anyway']} of {tp['flagged']} flags were killed anyway)")
-        if tp["precision"] < 0.85:
-            print(f"  -> BELOW the 0.85 gate. mutation_score_adjusted is NOT trustworthy;")
-            print(f"     narrow the filter before using it to judge anything.")
+        print(f"  section 2 (tautological)     : {tp['precision']:.3f} "
+              f"-- IGNORE, cannot fail by construction")
     print(f"  true gaps available          : {report['gap_labels']['n_positives']}")
     tr = report["tiers"].get("trend_mutation_score", {})
     if tr.get("p_value") is not None:
