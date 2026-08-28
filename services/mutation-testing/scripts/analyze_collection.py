@@ -46,7 +46,7 @@ TIER_ORDER = ("weak", "medium", "strong")
 REPORTS = SERVICE_ROOT / "reports"
 CORPUS = SERVICE_ROOT / "corpus"
 
-SURVIVED = ("active_survivor", "uncovered", "equivalent_suspected")
+SURVIVED = ("active_survivor", "uncovered", "equivalent_suspected", "low_value")
 
 
 def rule(title: str) -> None:
@@ -185,8 +185,8 @@ def section_ledger(conn, version: str) -> Dict:
                   SUM(outcome = 'killed')               AS killed,
                   SUM(outcome = 'active_survivor')      AS active,
                   SUM(outcome = 'uncovered')            AS uncovered,
-                  SUM(outcome = 'equivalent_suspected') AS equiv_outcome,
-                  SUM(triage_status = 'equivalent_suspected') AS flagged_all
+                  SUM(outcome IN ('equivalent_suspected','low_value')) AS equiv_outcome,
+                  SUM(triage_status IN ('equivalent_suspected','low_value')) AS flagged_all
            FROM mutants WHERE dataset_schema_version = ?
            GROUP BY 1, 2 ORDER BY 1, 2""", (version,)).fetchall()
 
@@ -236,7 +236,7 @@ def section_triage_fp(conn, version: str) -> Dict:
                   SUM(outcome = 'killed') AS killed_anyway
            FROM mutants
            WHERE dataset_schema_version = ? AND suite = 'weak'
-             AND triage_status = 'equivalent_suspected'
+             AND triage_status IN ('equivalent_suspected','low_value')
            GROUP BY 1 ORDER BY flagged DESC""", (version,)).fetchall()
 
     if not rows:
@@ -269,7 +269,7 @@ def section_triage_fp(conn, version: str) -> Dict:
         """SELECT module_slug, function_name, line_number, outcome, removed_line
            FROM mutants
            WHERE dataset_schema_version = ? AND suite = 'weak'
-             AND triage_status = 'equivalent_suspected'
+             AND triage_status IN ('equivalent_suspected','low_value')
              AND removed_line IS NOT NULL
            ORDER BY (outcome = 'killed') DESC LIMIT 15""", (version,)).fetchall()
     if samples:
@@ -333,7 +333,7 @@ def section_oracle(conn, version: str, asymmetric: List[str]) -> Dict:
                  AND s.suite = 'strong'
                  AND s.dataset_schema_version = w.dataset_schema_version
            WHERE w.suite = 'weak' AND w.dataset_schema_version = ?
-             AND w.triage_status = 'equivalent_suspected'
+             AND w.triage_status IN ('equivalent_suspected','low_value')
              AND w.outcome != 'killed'
            GROUP BY 1, 2 ORDER BY flagged DESC""", (version,)).fetchall()
 
@@ -365,7 +365,7 @@ def section_operators(conn, version: str) -> Dict:
     rows = conn.execute(
         """SELECT operator, suite, COUNT(*) AS n,
                   SUM(outcome = 'killed') AS killed,
-                  SUM(triage_status = 'equivalent_suspected') AS flagged
+                  SUM(triage_status IN ('equivalent_suspected','low_value')) AS flagged
            FROM mutants WHERE dataset_schema_version = ?
            GROUP BY 1, 2""", (version,)).fetchall()
 
@@ -423,7 +423,7 @@ def section_gap_labels(conn, version: str, asymmetric: List[str]) -> Dict:
             m["true_gap_covered"] += r["n"]
         elif r["weak_outcome"] == "uncovered" and r["strong_outcome"] == "killed":
             m["true_gap_coverage"] += r["n"]
-        elif r["weak_outcome"] == "equivalent_suspected" and r["strong_outcome"] == "killed":
+        elif r["weak_outcome"] in ("equivalent_suspected", "low_value") and r["strong_outcome"] == "killed":
             m["triage_fp"] += r["n"]
         elif r["weak_outcome"] in SURVIVED and r["strong_outcome"] != "killed":
             m["unlabelable"] += r["n"]

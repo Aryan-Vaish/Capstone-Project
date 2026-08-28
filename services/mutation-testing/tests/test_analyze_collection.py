@@ -55,11 +55,17 @@ def synthetic_db(tmp_path, monkeypatch):
     with connection() as conn:
         # --- 01: strong tier. 8 killed / 2 survived. Two flagged-but-KILLED,
         # i.e. planted triage false positives.
+        # Two mutants are flagged arid by the weak suite. The collector
+        # overwrites `outcome` for flagged rows, so outcome == low_value, NOT
+        # killed -- the combination the old fixture used cannot occur in real
+        # data. The strong suite kills both, refuting the flag. That refutation
+        # is the only real measurement of filter error (section 4).
         for i in range(8):
             flagged = i < 2
-            _add(conn, "01_withdraw_ledger", "weak", f"m.x_f__mutmut_{i}", "killed",
-                 triage="equivalent_suspected" if flagged else "active",
-                 reason="string_literal_only" if flagged else "no_arid_pattern_matched",
+            _add(conn, "01_withdraw_ledger", "weak", f"m.x_f__mutmut_{i}",
+                 "low_value" if flagged else "killed",
+                 triage="low_value" if flagged else "active",
+                 reason="logging_call" if flagged else "no_arid_pattern_matched",
                  conf=0.7 if flagged else 1.0)
         for i in range(8, 10):
             _add(conn, "01_withdraw_ledger", "weak", f"m.x_f__mutmut_{i}", "active_survivor")
@@ -119,11 +125,22 @@ def test_script_runs_end_to_end(synthetic_db):
 
 
 def test_detects_planted_triage_false_positives(synthetic_db):
-    """Two mutants were flagged equivalent and then killed by the very suite
-    that flagged them -- precision must be 0/2 correct = 0.000."""
+    """Two mutants flagged arid by the weak suite are KILLED by the strong
+    suite. Section 4 must refute both, and Gate 4 must report 0.000 and fail."""
     out = run_script(synthetic_db)
-    assert "0.000" in out
+    assert "GATE 4" in out
+    assert "0.000" in out, f"expected refuted precision 0.000:\n{out}"
     assert "BELOW the 0.85 gate" in out
+
+
+def test_section_2_precision_is_tautological(synthetic_db):
+    """Section 2 asks whether a flagged mutant was killed by the SAME suite.
+    The collector overwrites `outcome` for flagged rows, so that query can
+    never return a kill: section 2 reports 1.000 even with planted false
+    positives that section 4 correctly refutes. This test pins the defect so
+    nobody trusts section 2 again. See ADR-005."""
+    out = run_script(synthetic_db)
+    assert "cannot fail by construction" in out
 
 
 def test_detects_asymmetric_module(synthetic_db):

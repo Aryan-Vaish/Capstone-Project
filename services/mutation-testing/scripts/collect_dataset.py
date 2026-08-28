@@ -237,8 +237,8 @@ def _triage_precision(schema_version: str = DATASET_SCHEMA_VERSION) -> Dict:
     with connection() as conn:
         row = conn.execute(
             """SELECT
-                   SUM(triage_status = 'equivalent_suspected')                       AS flagged,
-                   SUM(triage_status = 'equivalent_suspected' AND outcome = 'killed') AS killed_anyway
+                   SUM(triage_status IN ('equivalent_suspected','low_value'))                       AS flagged,
+                   SUM(triage_status IN ('equivalent_suspected','low_value') AND outcome = 'killed') AS killed_anyway
                FROM mutants
                WHERE dataset_schema_version = ? AND suite = 'weak'""",
             (schema_version,),

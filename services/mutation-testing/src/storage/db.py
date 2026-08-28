@@ -302,7 +302,8 @@ def fetch_training_population(schema_version: str = DATASET_SCHEMA_VERSION) -> L
                WHERE dataset_schema_version = ?
                  AND covered = 1
                  AND outcome != 'uncovered'
-                 AND (triage_status IS NULL OR triage_status != 'equivalent_suspected')
+                 AND (triage_status IS NULL OR triage_status NOT IN
+                      ('equivalent_suspected','low_value'))
                  AND suite = 'weak'""",
             (schema_version,),
         ).fetchall()
