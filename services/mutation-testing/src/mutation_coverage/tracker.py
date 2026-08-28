@@ -105,6 +105,24 @@ def get_coverage_detail(work_dir: Path, source_file: str,
                 counts[int(line_str)] = len({c for c in ctx_list if c})
             except (TypeError, ValueError):
                 continue
+
+        # coverage.py keys executed lines on the line a STATEMENT begins, so a
+        # multi-line dict/call/comprehension contributes only its first line and
+        # every mutant on a continuation line looks uncovered. Widen both the
+        # covered set and the per-line test counts to the whole statement span,
+        # or `covered` and `n_covering_tests` disagree -- and n_covering_tests
+        # is a model feature, so a silently-zero value is worse than a missing
+        # one. Real case: 26 mutants in 09_stats_summary.summarize(). ADR-005.
+        src_path = Path(work_dir) / source_file
+        if src_path.is_file():
+            source_text = src_path.read_text(encoding="utf-8", errors="replace")
+            widened = expand_to_statement_lines(covered, source_text)
+            spans = _statement_spans(source_text)
+            for ln in widened - covered:
+                start = spans.get(ln)
+                if start is not None and start in counts:
+                    counts[ln] = counts[start]
+            covered = widened
         return covered, counts
 
     raise CoverageError(
@@ -112,3 +130,47 @@ def get_coverage_detail(work_dir: Path, source_file: str,
         f"Files reported: {sorted(data.get('files', {}))[:10]}. "
         f"This usually means the tests never imported the module under test."
     )
+
+
+def expand_to_statement_lines(covered: Set[int], source: str) -> Set[int]:
+    """Widen a coverage set to every line spanned by each covered statement.
+
+    coverage.py records the line a statement STARTS on. A multi-line dict,
+    call, or comprehension therefore contributes one line, and mutants landing
+    on its continuation lines look uncovered even though the statement ran.
+
+    Outermost statements win: setdefault plus ast.walk means a nested statement
+    never overwrites its parent's mapping, matching what coverage records.
+    """
+    import ast
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return set(covered)
+    span: Dict[int, int] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.stmt):
+            end = getattr(node, "end_lineno", None) or node.lineno
+            for ln in range(node.lineno, end + 1):
+                span.setdefault(ln, node.lineno)
+    widened = set(covered)
+    for ln, start in span.items():
+        if start in covered:
+            widened.add(ln)
+    return widened
+
+
+def _statement_spans(source: str) -> Dict[int, int]:
+    """{any line -> the line its enclosing statement starts on}."""
+    import ast
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return {}
+    span: Dict[int, int] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.stmt):
+            end = getattr(node, "end_lineno", None) or node.lineno
+            for ln in range(node.lineno, end + 1):
+                span.setdefault(ln, node.lineno)
+    return span
