@@ -170,10 +170,10 @@ def run_mutation(req: MutationRunRequest):
                 insert_record(run_id, module_key, m.mutant_id, features, "uncovered", **common)
                 continue
 
-            if triage.status == "equivalent_suspected":
+            if triage.status == "low_value":
                 equivalent_filtered += 1
                 insert_record(run_id, module_key, m.mutant_id, features,
-                              "equivalent_suspected", **common)
+                              "low_value", **common)
                 filtered_audit.append({
                     "mutant_id": m.mutant_id,
                     "operator": m.operator,

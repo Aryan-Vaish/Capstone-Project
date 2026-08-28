@@ -77,7 +77,13 @@ _STRING_LITERAL_RE = re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|"[^"]*"|\'
 
 @dataclass
 class TriageResult:
-    status: str          # "active" | "equivalent_suspected"
+    status: str          # "active" | "low_value"
+    # "low_value" = arid: a real, killable mutant that no reasonable
+    # test asserts on. NOT an equivalence claim -- the strong suite
+    # killed 32 of 39 flags in the v2 dataset. Every Tier-0 rule here
+    # is an aridity judgment; true equivalence detection is Tier 1
+    # (bytecode) / Tier 2 (dynamic), neither of which is built.
+    # "equivalent_suspected" is reserved for those. See ADR-005.
     confidence: float
     reason_code: str
 
@@ -170,14 +176,14 @@ def triage_mutant(diff_text: str, function_name: Optional[str] = None,
     generator already parses out of the mutant id.
     """
     if function_name and function_name.split(".")[-1] in COSMETIC_METHODS:
-        return TriageResult("equivalent_suspected", 0.9, "cosmetic_method")
+        return TriageResult("low_value", 0.9, "cosmetic_method")
 
     removed, added = _changed_lines(diff_text)
     changed = removed + added
 
     for pattern, reason in ARID_LINE_PATTERNS:
         if any(pattern.search(line) for line in changed):
-            return TriageResult("equivalent_suspected", 0.8, reason)
+            return TriageResult("low_value", 0.8, reason)
 
     # A string-content change is arid ONLY when the literal is in message
     # position. Requiring both conditions is the fix for the over-flagging
@@ -185,7 +191,7 @@ def triage_mutant(diff_text: str, function_name: Optional[str] = None,
     # dict keys, set members and return values, which are highly killable.
     if _is_string_literal_only_change(removed, added):
         if _is_message_position(removed[0]):
-            return TriageResult("equivalent_suspected", 0.7, "string_literal_message")
+            return TriageResult("low_value", 0.7, "string_literal_message")
         # Deliberately falls through to active: a data string that changes
         # behaviour is a real survivor, and hiding it would inflate the score.
 

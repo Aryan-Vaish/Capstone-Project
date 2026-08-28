@@ -172,8 +172,8 @@ def test_training_population_excludes_uncovered_and_arid(sample_module):
     db.insert_record("pop", "corpus/pop/pop.py", "pop.x_b__mutmut_1", uncovered,
                      "uncovered", suite="weak", triage_status="active")
     db.insert_record("pop", "corpus/pop/pop.py", "pop.x_c__mutmut_1", covered,
-                     "equivalent_suspected", suite="weak",
-                     triage_status="equivalent_suspected")
+                     "low_value", suite="weak",
+                     triage_status="low_value")
     db.insert_record("pop", "corpus/pop/pop.py", "pop.x_d__mutmut_1", covered,
                      "killed", suite="strong", triage_status="active")
 

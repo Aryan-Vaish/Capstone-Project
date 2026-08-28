@@ -97,7 +97,7 @@ def test_data_strings_are_active_not_equivalent(module, before, after, why):
 ])
 def test_message_strings_remain_flagged(before, after):
     result = triage_mutant(diff(before, after), function_name="some_function")
-    assert result.status == "equivalent_suspected", (
+    assert result.status == "low_value", (
         f"{before.strip()!r} should still be arid, got {result.reason_code}"
     )
 
@@ -123,14 +123,14 @@ def test_cosmetic_method_flagged_by_enclosing_function():
              '        return "RateLimiter({})".format(None)'),
         function_name="RateLimiter.__repr__",
     )
-    assert result.status == "equivalent_suspected"
+    assert result.status == "low_value"
     assert result.reason_code == "cosmetic_method"
 
 
 def test_logging_call_line_flagged():
     result = triage_mutant(diff(
         '    logger.info("count=%s", n)', '    logger.info("count=%s", None)'))
-    assert result.status == "equivalent_suspected"
+    assert result.status == "low_value"
     assert result.reason_code == "logging_call"
 
 
@@ -171,3 +171,15 @@ def test_triage_result_carries_full_provenance():
     assert result.status == "active"
     assert result.confidence == 1.0
     assert result.reason_code == "no_arid_pattern_matched"
+
+
+def test_tier0_never_claims_equivalence():
+    """Tier-0 rules are aridity judgments, not equivalence claims. The strong
+    suite killed 32 of 39 flags in the v2 dataset, so these mutants are
+    demonstrably killable. `equivalent_suspected` is reserved for Tier 1
+    (bytecode) and Tier 2 (dynamic) detection, neither of which is built.
+    See ADR-005."""
+    import inspect
+    from src.triage import arid_filter
+    source = inspect.getsource(arid_filter)
+    assert 'TriageResult("equivalent_suspected"' not in source

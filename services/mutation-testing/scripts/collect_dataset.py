@@ -139,8 +139,8 @@ def collect_one(entry: Dict, suite: str, run_id: str, shas: Dict,
                 outcome = "killed"
             elif not covered:
                 outcome = "uncovered"
-            elif triage.status == "equivalent_suspected":
-                outcome = "equivalent_suspected"
+            elif triage.status == "low_value":
+                outcome = "low_value"
             else:
                 outcome = "active_survivor"
             stats[outcome] += 1
