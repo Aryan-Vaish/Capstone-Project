@@ -223,27 +223,41 @@ def _archive_existing(schema_version: str = DATASET_SCHEMA_VERSION) -> Optional[
 
 
 def _triage_precision(schema_version: str = DATASET_SCHEMA_VERSION) -> Dict:
-    """Measured precision of the Tier-0 equivalence filter, no oracle required.
+    """Measured precision of the Tier-0 arid filter, via the strong suite.
 
-    A mutant the filter called `equivalent_suspected` that the SAME suite then
-    KILLED is a demonstrated false positive -- the mutant was observable after
-    all. This needs no cross-suite join and no assumption about the strong
-    suite's adequacy, which makes it the cheapest and cleanest measurement
-    available.
+    A mutant flagged arid by the weak suite that the STRONG suite then KILLED
+    is a demonstrated false positive: it was observable after all.
 
-    Only weak-suite rows count, since that is the suite whose scores the tier
-    gate judges.
+    The same-suite version of this check was a tautology and is removed. The
+    collector overwrites `outcome` to the triage status for flagged rows, so
+    `flagged AND outcome = killed` is identically zero and precision is 1.000
+    by construction. It reported 1.000 on the v2 dataset while the oracle
+    refuted 32 of 39 flags. See ADR-005.
+
+    Requires both suites. With --suites weak only, returns measurable=False
+    rather than a number it cannot compute.
     """
+    FLAGGED = "w.triage_status IN ('equivalent_suspected','low_value')"
     with connection() as conn:
+        n_strong = conn.execute(
+            "SELECT COUNT(*) FROM mutants WHERE dataset_schema_version = ? "
+            "AND suite = 'strong'", (schema_version,)).fetchone()[0]
+        if not n_strong:
+            return {"flagged": 0, "killed_anyway": 0, "precision": None,
+                    "ci": (0.0, 1.0), "measurable": False,
+                    "note": "no strong-suite rows; filter precision unmeasurable"}
         row = conn.execute(
-            """SELECT
-                   SUM(triage_status IN ('equivalent_suspected','low_value'))                       AS flagged,
-                   SUM(triage_status IN ('equivalent_suspected','low_value') AND outcome = 'killed') AS killed_anyway
-               FROM mutants
-               WHERE dataset_schema_version = ? AND suite = 'weak'""",
+            f"""SELECT COUNT(*) AS flagged,
+                       SUM(s.outcome = 'killed') AS refuted
+                FROM mutants w
+                JOIN mutants s
+                  ON s.module_key = w.module_key AND s.mutant_id = w.mutant_id
+                 AND s.suite = 'strong'
+                 AND s.dataset_schema_version = w.dataset_schema_version
+                WHERE w.dataset_schema_version = ? AND w.suite = 'weak'
+                  AND {FLAGGED}""",
             (schema_version,),
         ).fetchone()
-
     flagged = row[0] or 0
     killed_anyway = row[1] or 0
     correct = flagged - killed_anyway
@@ -253,6 +267,7 @@ def _triage_precision(schema_version: str = DATASET_SCHEMA_VERSION) -> Dict:
         "killed_anyway": killed_anyway,
         "precision": precision,
         "ci": wilson_interval(correct, flagged) if flagged else (1.0, 1.0),
+        "measurable": True,
     }
 
 
@@ -355,20 +370,30 @@ def main() -> int:
                         f"{MAX_UNRESOLVED_RATE:.0%} -- the line resolver is missing "
                         f"cases; coverage gating cannot be trusted until it is fixed")
 
-    # --- Gate 4: equivalence-filter precision, measured without an oracle ---
+    # --- Gate 4: arid-filter precision, measured against the STRONG suite ---
     triage_stats = _triage_precision()
-    if triage_stats["flagged"] > 0:
+    if not triage_stats.get("measurable", True):
+        print(f"\ntriage precision:     UNMEASURABLE "
+              f"({triage_stats.get('note', 'no oracle')})")
+        failures.append(
+            "triage precision is UNMEASURABLE -- no strong-suite rows, so no "
+            "oracle can refute a flag. An unmeasured gate is not a passed gate; "
+            "collect both suites (--suites weak,strong) before training")
+    elif triage_stats["flagged"] == 0:
+        print("\ntriage precision:     n/a (0 mutants flagged)")
+    else:
         prec = triage_stats["precision"]
         lo, hi = triage_stats["ci"]
+        refuted = triage_stats["killed_anyway"]
+        flagged = triage_stats["flagged"]
         print(f"\ntriage precision:     {prec:.3f} "
               f"[{lo:.3f}, {hi:.3f}]  "
-              f"({triage_stats['flagged'] - triage_stats['killed_anyway']}"
-              f"/{triage_stats['flagged']} flags survived the suite that flagged them)")
+              f"({flagged - refuted}/{flagged} flags the ORACLE did not kill)")
         if prec < MIN_TRIAGE_PRECISION:
             failures.append(
                 f"triage precision {prec:.3f} below {MIN_TRIAGE_PRECISION:.2f} -- the "
-                f"equivalence filter flagged {triage_stats['killed_anyway']} mutant(s) "
-                f"the suite went on to KILL, so they were never equivalent. "
+                f"arid filter flagged {refuted} mutant(s) the STRONG suite went on to "
+                f"KILL, so they were demonstrably killable, not equivalent. "
                 f"mutation_score_adjusted cannot be trusted until this is fixed; "
                 f"run scripts/analyze_collection.py for the per-rule breakdown")
 
