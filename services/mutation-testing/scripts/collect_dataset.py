@@ -110,7 +110,7 @@ def collect_one(entry: Dict, suite: str, run_id: str, shas: Dict,
     stats = {
         "module": entry["dir"], "suite": suite, "total": len(mutants),
         "killed": 0, "active_survivor": 0, "uncovered": 0,
-        "equivalent_suspected": 0, "unclassified": 0, "unresolved_line": 0,
+        "equivalent_suspected": 0, "low_value": 0, "unclassified": 0, "unresolved_line": 0,
     }
     unclassified_rows: List[Dict] = []
 
@@ -163,7 +163,7 @@ def collect_one(entry: Dict, suite: str, run_id: str, shas: Dict,
     # two code paths can never report different numbers under the same name.
     # See shared/schemas/mutation_schema.py for what each one means.
     total = stats["total"]
-    equiv = stats["equivalent_suspected"]
+    equiv = stats["equivalent_suspected"] + stats["low_value"]
     active = stats["active_survivor"]
     adjusted_denom = total - equiv
     strength_denom = stats["killed"] + active
@@ -325,7 +325,7 @@ def main() -> int:
             all_stats.append(s)
             print(f"{s['module']:<26} {suite:<7} {s['total']:>4} {s['killed']:>5} "
                   f"{s['active_survivor']:>4} {s['uncovered']:>4} "
-                  f"{s['equivalent_suspected']:>6} {s['unclassified']:>4} "
+                  f"{s['equivalent_suspected'] + s['low_value']:>6} {s['unclassified']:>4} "
                   f"{s['unresolved_line']:>6} {s['mutation_score']:>6.3f} "
                   f"{s['elapsed_s']:>6.1f}")
 

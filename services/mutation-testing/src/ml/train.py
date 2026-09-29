@@ -159,7 +159,15 @@ def cross_validate(X, y, groups) -> Tuple[Dict, List[Dict]]:
             continue
         pos, neg = int(y_arr[tr].sum()), int((1 - y_arr[tr]).sum())
         model = xgb.XGBClassifier(
-            n_estimators=200, max_depth=3, learning_rate=0.05,
+            # Sized for n=264 rows / 10 groups, NOT tuned against the folds these
+            # numbers are reported on -- searching the space on the same folds used
+            # for evaluation biases PR-AUC upward, and 10 groups is too few to afford
+            # nested CV. depth=2 caps each tree at 4 leaf regions (depth=3 allows 8,
+            # enough for 200 trees to memorise module quirks that GroupKFold then
+            # punishes); min_child_weight=5 stops a leaf forming on one module's few
+            # positives; reg_lambda=2 shrinks leaf weights. See ADR-005.
+            n_estimators=150, max_depth=2, learning_rate=0.05,
+            min_child_weight=5, reg_lambda=2.0,
             subsample=0.9, colsample_bytree=0.9,
             scale_pos_weight=(neg / pos) if pos else 1.0,
             eval_metric="logloss", random_state=42,
@@ -231,7 +239,15 @@ def main() -> int:
     X_arr, y_arr = np.asarray(X, dtype=float), np.asarray(y)
     pos, neg = int(y_arr.sum()), int((1 - y_arr).sum())
     final = xgb.XGBClassifier(
-        n_estimators=200, max_depth=3, learning_rate=0.05,
+        # Sized for n=264 rows / 10 groups, NOT tuned against the folds these
+        # numbers are reported on -- searching the space on the same folds used
+        # for evaluation biases PR-AUC upward, and 10 groups is too few to afford
+        # nested CV. depth=2 caps each tree at 4 leaf regions (depth=3 allows 8,
+        # enough for 200 trees to memorise module quirks that GroupKFold then
+        # punishes); min_child_weight=5 stops a leaf forming on one module's few
+        # positives; reg_lambda=2 shrinks leaf weights. See ADR-005.
+        n_estimators=150, max_depth=2, learning_rate=0.05,
+        min_child_weight=5, reg_lambda=2.0,
         subsample=0.9, colsample_bytree=0.9,
         scale_pos_weight=(neg / pos) if pos else 1.0,
         eval_metric="logloss", random_state=42,
@@ -259,7 +275,8 @@ def main() -> int:
         "cv_folds": fold_metrics,
         "baselines": baselines,
         "hyperparameters": {
-            "n_estimators": 200, "max_depth": 3, "learning_rate": 0.05,
+            "n_estimators": 150, "max_depth": 2, "learning_rate": 0.05,
+            "min_child_weight": 5, "reg_lambda": 2.0,
             "subsample": 0.9, "colsample_bytree": 0.9,
             "scale_pos_weight": (neg / pos) if pos else 1.0,
         },
